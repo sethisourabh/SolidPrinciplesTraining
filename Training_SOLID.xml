@@ -1,0 +1,571 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25" zv="Cache for Windows (x86-64) 2017.2.1 (Build 801_3_18358U)" ts="2019-07-29 05:53:45">
+<Class name="Training.SOLID.CreateEmployee.Interface">
+<Super>%RegisteredObject</Super>
+<TimeChanged>65222,66759.366712</TimeChanged>
+<TimeCreated>65222,66759.366712</TimeCreated>
+
+<Method name="CallAPI">
+<FormalSpec>pName:%String,pSalary:%String,pAge:%String,ContentType:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Set FormatorFactoryObj = ##Class(Training.SOLID.Formator.RequestFormatorFactory).%New(ContentType)
+	Set WriterObj = ##class(Training.SOLID.Writer.RequestWriter).%New(FormatorFactoryObj)
+	
+	Set BuilderObj = ##Class(Training.SOLID.CreateEmployee.Request.Builder).%New(WriterObj)
+	
+	Set RequestString = BuilderObj.Build(pName,pSalary,pAge)
+	
+	
+	//Client
+	
+	//Process Error and Response
+	
+	
+	Quit $$$OK
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.CreateEmployee.Request.Builder">
+<Super>%RegisteredObject</Super>
+<TimeChanged>65222,65437.352138</TimeChanged>
+<TimeCreated>65222,64848.313071</TimeCreated>
+
+<Property name="RequestWriter">
+<Type>Training.SOLID.Writer.iWriter</Type>
+<Private>1</Private>
+</Property>
+
+<Method name="%OnNew">
+<FormalSpec>RequestWriter:Training.SOLID.Writer.iWriter</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Quit:'$IsObject(RequestWriter) $$$ERROR($$$GeneralError, "Invalid RequestWriter Object")
+	Set ..RequestWriter = RequestWriter
+	Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="Build">
+<FormalSpec>Name:%String,Salary:%String,Age:%String</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	do ..RequestWriter.Add("name", Name)
+	do ..RequestWriter.Add("salary", Salary)
+	do ..RequestWriter.Add("age", Age)
+	
+	Quit ..RequestWriter.GetContent()
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.Formator.RequestFormatorFactory">
+<Super>%RegisteredObject,iFormatorFactory</Super>
+<TimeChanged>65223,17352.594406</TimeChanged>
+<TimeCreated>65222,61075.94157</TimeCreated>
+
+<Method name="GetFormator">
+<FormalSpec>Value:%String</FormalSpec>
+<ReturnType>Training.SOLID.Library.Formator.iFormator</ReturnType>
+<Implementation><![CDATA[
+	#dim RetObj As Training.SOLID.Library.Formator.iFormator 
+		
+	Set UpContentType = $ZCONVERT(..ContentType,"U")
+	
+	if (UpContentType [ "XML")
+	{
+		Set RetObj = ##class(Training.SOLID.Library.Formator.SimpleXMLFormator).%New()
+	}
+	elseif (UpContentType [ "JSON")
+	{
+		Set RetObj = ##class(Training.SOLID.Library.Formator.SimpleJSONFormator).%New()
+	}
+	else
+	{
+		THROW $$$ERROR($$$GeneralError,"Unhandled ContentType")
+	}
+	
+	Quit RetObj
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.Formator.iFormatorFactory">
+<Abstract>1</Abstract>
+<TimeChanged>65222,59719.960723</TimeChanged>
+<TimeCreated>65222,59711.96724</TimeCreated>
+
+<Property name="ContentType">
+<Type>%String</Type>
+<Private>1</Private>
+</Property>
+
+<Method name="%OnNew">
+<Final>1</Final>
+<FormalSpec>ContentType:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Quit:($G(ContentType) = "") $$$ERROR($$$GeneralError,"ContentType muse be passed")
+	
+	Set ..ContentType = ContentType
+	
+	Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="GetFormator">
+<Abstract>1</Abstract>
+<FormalSpec>Value:%String</FormalSpec>
+<ReturnType>Training.SOLID.Library.Formator.iFormator</ReturnType>
+<Implementation><![CDATA[	Quit
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.Legacy.CreateEmployee">
+<Super>%RegisteredObject</Super>
+<TimeChanged>65219,1074.385837</TimeChanged>
+<TimeCreated>65205,8042.571133</TimeCreated>
+
+<Method name="Execute">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>pName:%String,pSalary:%String,pAge:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	//Request Object
+	Set tJSON = "{"
+	if $Data(pName) 
+	{
+		Set tJSON=tJSON_"""name"":"""_pName_""""
+	}
+	if $Data(pSalary) 
+	{
+		if tJSON = "{"
+		{
+			Set tJSON=tJSON_"""salary"":"""_pSalary_""""
+		}
+		else
+		{
+			Set tJSON=tJSON_", ""salary"":"""_pSalary_""""
+		}
+	} 
+	
+	if $Data(pAge) 
+	{
+		if tJSON = "{"
+		{
+			Set tJSON=tJSON_"""age"":"""_pAge_""""
+		}
+		else
+		{
+			Set tJSON=tJSON_", ""age"":"""_pAge_""""
+		}
+	} 
+	Set tJSON = tJSON_"}"
+	
+	
+	//Rest Client, Build Request Body and POST
+	Set objClient = ##Class(%Net.HttpRequest).%New()
+	Set tURL = "http://dummy.restapiexample.com/api/v1/create"
+	do objClient.EntityBody.Write(tJSON)
+	Set tSC = objClient.Post(tURL)
+	
+	
+	//Handle Errors and write Response
+	if $$$ISERR(tSC)
+	{
+		Write !,"Error - "_$System.Status.GetErrorText(tSC)
+	}
+	else
+	{
+		Set tResponse = objClient.HttpResponse.Data.Read()
+		Write !,tResponse
+	}
+	Quit $$$OK
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.Library.Formator.ComplexJSONFormator">
+<Super>%RegisteredObject,iFormator</Super>
+<TimeChanged>65222,63634.310604</TimeChanged>
+<TimeCreated>65222,59276.221801</TimeCreated>
+
+<Method name="GetFormattedText">
+<Final>1</Final>
+<FormalSpec>Content:%String,Key:%String,Value:%RegisteredObject</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[	Quit ""
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.Library.Formator.ComplexXMLFormator">
+<Super>%RegisteredObject,iFormator</Super>
+<TimeChanged>65222,63673.943949</TimeChanged>
+<TimeCreated>65222,59319.958541</TimeCreated>
+
+<Method name="GetFormattedText">
+<Final>1</Final>
+<FormalSpec>Content:%String,Key:%String,Value:%RegisteredObject</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[	Quit ""
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.Library.Formator.SimpleJSONFormator">
+<Super>%RegisteredObject,iFormator</Super>
+<TimeChanged>65222,63900.733819</TimeChanged>
+<TimeCreated>65222,59086.890684</TimeCreated>
+
+<Method name="GetFormattedText">
+<Final>1</Final>
+<FormalSpec>Content:%String,Key:%String,Value:%RegisteredObject</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	Set tPair = " """_Key_""":"""_$g(Value)_""" "
+			
+	Set:(Content'="") Content = Content_", "_tPair
+	Set:(Content="") Content = tPair
+	Quit Content
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.Library.Formator.SimpleXMLFormator">
+<Super>%RegisteredObject,iFormator</Super>
+<TimeChanged>65222,63938.862805</TimeChanged>
+<TimeCreated>65222,59198.022936</TimeCreated>
+
+<Method name="GetFormattedText">
+<Final>1</Final>
+<FormalSpec>Content:%String,Key:%String,Value:%RegisteredObject</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[	Quit Content_"<"_Key_">"_Value_"</"_Key_">"
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.Library.Formator.iFormator">
+<Abstract>1</Abstract>
+<TimeChanged>65222,63653.70748</TimeChanged>
+<TimeCreated>65222,58955.3922</TimeCreated>
+
+<Method name="GetFormattedText">
+<Abstract>1</Abstract>
+<FormalSpec>Content:%String,Key:%String,Value:%RegisteredObject</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[	Quit ""
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.Library.RequestWriter">
+<Super>%RegisteredObject</Super>
+<TimeChanged>65219,6974.803743</TimeChanged>
+<TimeCreated>65219,6974.803743</TimeCreated>
+
+<Property name="RequestString">
+<Type>%String</Type>
+<Private>1</Private>
+</Property>
+
+<Method name="Add">
+<FormalSpec>pKey:%String,pValue:%String,pAllowNullValues:%Boolean=1</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Quit:$G(pKey)="" $$$OK
+	
+	Set tRequest = ""
+	
+	if (($D(pValue)) || (pAllowNullValues))
+	{
+			Set tRequest = " """_pKey_""":"""_$g(pValue)_""" "
+			
+			Set:(..RequestString'="") ..RequestString = ..RequestString_", "_tRequest
+			Set:(..RequestString="") ..RequestString = tRequest
+	}
+	Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="GetRequestString">
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[	Quit "{"_..RequestString_"}"
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.Library.TestRequestWriter">
+<Super>%UnitTest.TestCase</Super>
+<TimeChanged>65219,7242.000444</TimeChanged>
+<TimeCreated>65219,7081.014728</TimeCreated>
+
+<Method name="TestMultipleKeyValue">
+<Implementation><![CDATA[
+	Set objJSONWriter = ##Class(Training.SOLID.Library.RequestWriter).%New()
+	
+	Do objJSONWriter.Add("Key1","Value1")
+	Do objJSONWriter.Add("Key2","Value2")
+	Do objJSONWriter.Add("Key3","Value3")
+	
+	Set tJSON = objJSONWriter.GetRequestString()
+	
+ 	do $$$AssertEquals(tJSON,"{ ""Key1"":""Value1"" ,  ""Key2"":""Value2"" ,  ""Key3"":""Value3"" }", "JSON - "_tJSON)
+]]></Implementation>
+</Method>
+
+<Method name="TestBlankKey">
+<Implementation><![CDATA[
+	Set objJSONWriter = ##Class(Training.SOLID.Library.RequestWriter).%New()
+	
+	Do objJSONWriter.Add("Key1","Value1")
+	Do objJSONWriter.Add("","Value2")
+	
+	Set tJSON = objJSONWriter.GetRequestString()
+	
+ 	do $$$AssertEquals(tJSON,"{ ""Key1"":""Value1"" }", "JSON - "_tJSON)
+]]></Implementation>
+</Method>
+
+<Method name="TestNullValueAllowNull">
+<Implementation><![CDATA[
+	Set objJSONWriter = ##Class(Training.SOLID.Library.RequestWriter).%New()
+	
+	Do objJSONWriter.Add("Key1","Value1")
+	Do objJSONWriter.Add("Key2")
+	
+	Set tJSON = objJSONWriter.GetRequestString()
+	
+ 	do $$$AssertEquals(tJSON,"{ ""Key1"":""Value1"" ,  ""Key2"":"""" }", "JSON - "_tJSON)
+]]></Implementation>
+</Method>
+
+<Method name="TestNullValueDoNotAllowNull">
+<Implementation><![CDATA[
+	Set objJSONWriter = ##Class(Training.SOLID.Library.RequestWriter).%New()
+	
+	Do objJSONWriter.Add("Key1","Value1",0)
+	Do objJSONWriter.Add("Key2",,0)
+	Do objJSONWriter.Add("Key3",,0)
+	
+	Set tJSON = objJSONWriter.GetRequestString()
+	
+ 	do $$$AssertEquals(tJSON,"{ ""Key1"":""Value1"" }", "JSON - "_tJSON)
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.S.CreateEmployee.Client">
+<Super>%RegisteredObject</Super>
+<TimeChanged>65218,34197.856299</TimeChanged>
+<TimeCreated>65205,9174.168488</TimeCreated>
+
+<Method name="Execute">
+<FormalSpec><![CDATA[pJSON,&pHttpRequest]]></FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Set tURL = "http://dummy.restapiexample.com/api/v1/create"
+	do pHttpRequest.EntityBody.Write(pJSON)
+	Set tSC = pHttpRequest.Send("POST",tURL)
+	Quit tSC
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.S.CreateEmployee.EntryPoint1">
+<Super>%RegisteredObject</Super>
+<TimeChanged>65219,10263.094533</TimeChanged>
+<TimeCreated>65207,38757.248495</TimeCreated>
+
+<Method name="Execute">
+<FormalSpec>pName:%String,pSalary:%String,pAge:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	//Build Request
+	Set tJSON = ##Class(Training.SOLID.S.CreateEmployee.RequestBuilder).%New().Build(pName,pSalary,pAge)
+	
+	//Client
+	Set tHttpRequest = ##class(%Net.HttpRequest).%New()
+	Set tSC = ##Class(Training.SOLID.S.CreateEmployee.Client).%New().Execute(tJSON, .tHttpRequest)
+	
+	//Process Error and Response
+	if '(##Class(Training.SOLID.S.CreateEmployee.ProcessError).%New().IsError(tSC))
+	{
+		Do ##Class(Training.SOLID.S.CreateEmployee.ProcessResponse).%New().Execute(tHttpRequest.HttpResponse)
+	}
+	QUIT $$$OK
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.S.CreateEmployee.ProcessError">
+<Super>%RegisteredObject</Super>
+<TimeChanged>65205,11396.133697</TimeChanged>
+<TimeCreated>65205,9837.509938</TimeCreated>
+
+<Method name="IsError">
+<FormalSpec>pStatus:%String</FormalSpec>
+<ReturnType>%Boolean</ReturnType>
+<Implementation><![CDATA[
+	if $$$ISERR(pStatus)
+	{
+		Write !,"Error - "_$System.Status.GetErrorText(pStatus)
+		Quit 1
+	}
+	Quit 0
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.S.CreateEmployee.ProcessResponse">
+<Super>%RegisteredObject</Super>
+<TimeChanged>65216,61205.614241</TimeChanged>
+<TimeCreated>65205,10892.424238</TimeCreated>
+
+<Method name="Execute">
+<FormalSpec>objClient</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Set tResponse = objClient.HttpResponse.Data.Read()
+	Write !,tResponse
+	
+	Quit $$$OK
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.S.CreateEmployee.RequestBuilder">
+<Super>%RegisteredObject</Super>
+<TimeChanged>65219,9425.035643</TimeChanged>
+<TimeCreated>65219,2096.954602</TimeCreated>
+
+<Method name="Build">
+<Description><![CDATA[
+{ "" : "<Name>" , "salary" : "<Salary>", "age" : "<Age>" }]]></Description>
+<FormalSpec>pName:%String,pSalary:%String,pAge:%String</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	Set objRequestWriter = ##Class(Training.SOLID.Library.RequestWriter).%New()
+	Do objRequestWriter.Add("name",pName,0)
+	Do objRequestWriter.Add("salary",pSalary,0)
+	Do objRequestWriter.Add("age",pAge,0)
+	
+	Set tJSON = objRequestWriter.GetRequestString()
+	
+	Quit tJSON
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.Writer.RequestWriter">
+<Super>%RegisteredObject,iWriter</Super>
+<TimeChanged>65223,17384.66376</TimeChanged>
+<TimeCreated>65222,63199.925468</TimeCreated>
+
+<Method name="Add">
+<FormalSpec>Key,Value</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Set Formator = ..FormatorFactory.GetFormator(Value)
+	Set ..Content = Formator.GetFormattedText(Key, Value)
+	Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="GetContent">
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[	Quit ..Content
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="Training.SOLID.Writer.iWriter">
+<Abstract>1</Abstract>
+<TimeChanged>65223,18865.944316</TimeChanged>
+<TimeCreated>65222,62639.37449</TimeCreated>
+
+<Property name="FormatorFactory">
+<Type>Training.SOLID.Formator.iFormatorFactory</Type>
+<Private>1</Private>
+</Property>
+
+<Property name="Content">
+<Type>%String</Type>
+<Private>1</Private>
+</Property>
+
+<Method name="%OnNew">
+<Final>1</Final>
+<FormalSpec>FormatorFactory:Training.SOLID.Formator.iFormatorFactory</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	Quit:'$IsObject(FormatorFactory) $$$ERROR($$$GeneralError, "Invalid FormatorFactory Object")
+	
+	Set ..FormatorFactory = FormatorFactory
+	
+	Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="Add">
+<Abstract>1</Abstract>
+<FormalSpec>Key,Value</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[	Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="GetContent">
+<Abstract>1</Abstract>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[	Quit ""
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Project name="Training_SOLID" LastModified="2019-07-29 00:38:14.182128">
+  <Items>
+    <ProjectItem name="Training.SOLID.Legacy.CreateEmployee" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.Library.RequestWriter" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.Library.TestRequestWriter" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.S.CreateEmployee.Client" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.S.CreateEmployee.EntryPoint1" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.S.CreateEmployee.ProcessError" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.S.CreateEmployee.ProcessResponse" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.S.CreateEmployee.RequestBuilder" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.Library.Formator.iFormator" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.Library.Formator.SimpleJSONFormator" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.Library.Formator.SimpleXMLFormator" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.Library.Formator.ComplexJSONFormator" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.Library.Formator.ComplexXMLFormator" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.Formator.iFormatorFactory" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.Formator.RequestFormatorFactory" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.Writer.iWriter" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.Writer.RequestWriter" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.CreateEmployee.Request.Builder" type="CLS"></ProjectItem>
+    <ProjectItem name="Training.SOLID.CreateEmployee.Interface" type="CLS"></ProjectItem>
+  </Items>
+</Project>
+</Export>
